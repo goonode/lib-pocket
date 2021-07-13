@@ -17,12 +17,7 @@
     ],
     "paths": {
       "pocket": [
-        "dist/pocket/pocket",
         "dist/pocket"
-      ],
-      "pocket-test": [
-        "dist/pocket-test/pocket-test",
-        "dist/pocket-test"
       ]
     }
   },

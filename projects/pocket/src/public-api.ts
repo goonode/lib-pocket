@@ -3,5 +3,5 @@
  */
 
 export * from './lib/pocket.service';
-export * from './lib/pocket.component';
-export * from './lib/pocket.module';
+// export * from './lib/pocket.component';
+// export * from './lib/pocket.module';
