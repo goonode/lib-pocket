@@ -1,24 +1,30 @@
-# Pocket
+# Pocket Service
 
-This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 9.1.13.
+A root service to manage data exchange between angular components in a simple and smarter way and to trigger actions from inside a component (or a group of components).
 
-## Code scaffolding
+## Exchange data between components
 
-Run `ng generate component component-name --project pocket` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module --project pocket`.
-> Note: Don't forget to add `--project pocket` or else it will be added to the default project in your `angular.json` file. 
+TODO
 
-## Build
+### Registering a data namespace
 
-Run `ng build pocket` to build the project. The build artifacts will be stored in the `dist/` directory.
+TODO
 
-## Publishing
+### Listening for incoming data
 
-After building your library with `ng build pocket`, go to the dist folder `cd dist/pocket` and run `npm publish`.
+The caller can set or not the receiver field. If the caller set the receiver field, it states its intention to send the data only those subscribers that have the same receiver field setted.
+Otherwise, it will send the data to all subscribers.
+From the subscriber point of view the receiver field can be set or not, too.
+If the receiver field is set, the subscriber will receive all the data from all callers. Therefore, if the enforceSelf flag is set, it will only receive data from callers that send with the same receiver tag. In the other case, when the receiver field is not set, the subscriber will receive data from all callers that does not have a receiver tag.
 
-## Running unit tests
+## Trigger actions
 
-Run `ng test pocket` to execute the unit tests via [Karma](https://karma-runner.github.io).
+TODO
 
-## Further help
+### Registering an action namespace
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI README](https://github.com/angular/angular-cli/blob/master/README.md).
+TODO
+
+### Listening for incoming actions
+
+TODO

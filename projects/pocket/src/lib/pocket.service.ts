@@ -310,7 +310,7 @@ export class PocketService {
 
   // (pockets only) returns true if the [k][sub | optional] is not null
   check( k: string, sub = null ): boolean {
-    if ( this.pockets[ k ] == null || this.pockets[ k ].value == null ) { return false; }
+    if ( this.pockets[ k ] == null || this.pockets[ k ].value == null || this.pockets[ k ].value.new == null ) { return false; }
     if ( this.pockets[ k ].value.new[ sub ] == null ) { return false; }
     return true;
   }
