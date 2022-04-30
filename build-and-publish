@@ -1,0 +1,3 @@
+#!/bin/bash
+ng build --configuration=production pocket
+cd dist/pocket ; npm publish
