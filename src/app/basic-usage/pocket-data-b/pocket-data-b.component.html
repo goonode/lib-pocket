@@ -1,0 +1,12 @@
+<ng-container>
+  <div [formGroup]="tForm" fxLayout="row" fxLayoutGap="10px" fxLayoutAlign="start center">
+    <mat-form-field appearance="outline">
+      <mat-label>Value A (in component B)</mat-label>
+      <input matInput formControlName="va" name="va">
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Value B (in component B)</mat-label>
+      <input matInput formControlName="vb" name="vb">
+    </mat-form-field>
+  </div>
+</ng-container>
