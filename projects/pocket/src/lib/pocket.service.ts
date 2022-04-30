@@ -239,23 +239,34 @@ export class PocketService {
   }
 
   // operate on pockets subjects
-  next( k: string, v: Record<any, any>, o: PocketNextParams = null ) {
+  next( k: string, v: Record<any, any>, o: PocketNextParams = null, debug = false ) {
     const { caller, receiver, filter, emitEvent, } =
       { caller: null, receiver: null, filter: null, emitEvent: true, ...o };
-    // console.log( 'next' );
+
+    if ( debug ) { console.log( `k:${k},v:${JSON.stringify( v )},o:${JSON.stringify( o )}` ); }
+
     if ( !v ) { return null; }
     if ( this.pockets[ k ] == null ) { throw new Error( `${this.module}: next called before registration on ${k} : ${stackTrace()}` ); }
     const value: PocketData = this.pockets[ k ].value || { new: null };
     value.new = value.new ? value.new : {};
     value.old = value.old ? value.old : {};
+
+    if ( debug ) { console.log( `before:: old:${JSON.stringify( value.old )},new:${JSON.stringify( value.new )}` ); };
+
     for ( const i of Object.keys( v ) ) {
       value.old[ i ] = value.new[ i ];
       value.new[ i ] = ( typeof v[ i ] === 'object' ) ? R.clone( v[ i ] ) : v[ i ];
     }
+
+    if ( debug ) { console.log( `after:: old:${JSON.stringify( value.old )},new:${JSON.stringify( value.new )}` ); };
+
     value.caller = caller;
     value.receiver = receiver;
     value.filter = filter;
     value.emitEvent = emitEvent;
+
+    if ( debug ) { console.log( `value:: ${JSON.stringify( value )}` ); };
+
     this.pockets[ k ].next( value as PocketData );
   }
 
@@ -289,23 +300,44 @@ export class PocketService {
   }
 
   // pockets only
-  value<T>( k: string, sub = null ) {
-    if ( this.pockets[ k ] == null ) { return null; }
+  value<T>( registeredKey: string, sub = null ) {
+    if ( this.pockets[ registeredKey ] == null ) { return null; }
     if ( sub ) {
-      if ( this.pockets[ k ].value.new[ sub ] == null ) { return null; }
-      else { return this.pockets[ k ].value.new[ sub ] as T; }
+      if ( this.pockets[ registeredKey ].value.new && this.pockets[ registeredKey ].value.new[ sub ] == null ) { return null; }
+      else { return this.pockets[ registeredKey ].value.new[ sub ] as T; }
     }
-    return this.pockets[ k ].value.new as T;
+    return this.pockets[ registeredKey ].value.new as T;
   }
 
   // pockets only
-  oldValue<T>( k: string, sub = null ) {
-    if ( this.pockets[ k ] == null ) { return null; }
+  oldValue<T>( registeredKey: string, sub = null ) {
+    if ( this.pockets[ registeredKey ] == null ) { return null; }
     if ( sub ) {
-      if ( this.pockets[ k ].value.old[ sub ] == null ) { return null; }
-      else { return this.pockets[ k ].value.old[ sub ] as T; }
+      if ( this.pockets[ registeredKey ].value.old && this.pockets[ registeredKey ].value.old[ sub ] == null ) { return null; }
+      else { return this.pockets[ registeredKey ].value.old[ sub ] as T; }
     }
-    return this.pockets[ k ].value.old as T;
+    return this.pockets[ registeredKey ].value.old as T;
+  }
+
+  // pockets only
+  val<T>( v: any, dataKey: string, subDataKey = null ) {
+    if ( v == null || v.new == null || v.new[ dataKey ] == null ) { return null; }
+    if ( subDataKey ) {
+      if ( v.new[ dataKey ] && v.new[ dataKey ][ subDataKey ] == null ) { return null; }
+      else { return v.new[ dataKey ][ subDataKey ] as T; }
+    }
+    return v.new[ dataKey ] as T;
+  }
+
+  // pockets only
+  old<T>( v: any, dataKey: string, subDataKey = null ) {
+    if ( v == null || v.old == null || v.old[ dataKey ] == null ) { return null; }
+    if ( subDataKey ) {
+      if ( v.old[ dataKey ] && v.old[ dataKey ][ subDataKey ] == null ) { return null; }
+      else { return v.old[ dataKey ][ subDataKey ] as T; }
+    }
+
+    return v.old[ dataKey ] as T;
   }
 
   // (pockets only) returns true if the [k][sub | optional] is not null
@@ -377,7 +409,7 @@ export class PocketService {
     if ( !p.old ) { return true; }
     if ( !p.new[ k ] ) { return true; }
     if ( !p.old[ k ] ) { return true; }
-    return relaxed ? p.new[ k ][ f ] == p.new[ k ][ f ] : p.new[ k ][ f ] === p.new[ k ][ f ];
+    return relaxed ? p.old[ k ][ f ] != p.new[ k ][ f ] : p.old[ k ][ f ] !== p.new[ k ][ f ];
   }
 
   debug( k: string, inaction = false ) {
