@@ -2,7 +2,7 @@ import { Injectable, Optional, SkipSelf } from '@angular/core';
 
 import * as R from 'rambda';
 
-import { BehaviorSubject, Observable, pipe, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, Observer, pipe, Subject, Subscription } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 
 import { InPocketActionData, IN_POCKET_ACTION } from './pocket.action';
@@ -23,6 +23,34 @@ export interface PocketNextParams {
   filter?: any;
   emitEvent?: boolean;
 }
+export interface PocketDebug {
+  debug?: boolean;
+  subscriberID?: string;
+}
+
+export class ObservableWrapper<T> extends Observable<T> {
+  constructor( private tag: string = null ) { super(); }
+
+  subscribe( observer?: Partial<Observer<T>> ): Subscription;
+  subscribe( next: ( value: T ) => void ): Subscription;
+  subscribe( next?: ( value: T ) => void, error?: ( error: any ) => void, complete?: () => void ): Subscription;
+  subscribe( next?: any, error?: any, complete?: any ): Subscription {
+    const s = super.subscribe( next, error, complete );
+    ( s as unknown as any ).subscriberID = this.tag;
+    return s;
+  }
+}
+
+export class BehaviorSubjectWrapper<T> extends BehaviorSubject<T> {
+  constructor( _value: T ) { super( _value ); }
+
+  asObservable( tag: string = null ): Observable<T> {
+    const obs: any = new ObservableWrapper<T>( tag );
+    obs.source = this;
+    return obs;
+  }
+}
+
 export interface PocketData {
   new: Record<string, any>,
   old?: Record<string, any>,
@@ -43,10 +71,10 @@ export interface PocketActionData {
   emitEvent?: boolean;
 }
 export interface PocketSubject {
-  [ k: string ]: BehaviorSubject<PocketData>;
+  [ k: string ]: BehaviorSubjectWrapper<PocketData>;
 }
 export interface PocketActionSubject {
-  [ k: string ]: BehaviorSubject<PocketActionData>;
+  [ k: string ]: BehaviorSubjectWrapper<PocketActionData>;
 }
 
 export const POCKET_GLOBAL = 'global';
@@ -144,6 +172,7 @@ export class PocketService {
   private module = 'PocketService';
   private pockets: PocketSubject = {};
   private actions: PocketActionSubject = {};
+  private tags: string[] = [];
 
   constructor( @Optional() @SkipSelf() parent?: PocketService ) {
     if ( parent ) {
@@ -153,66 +182,47 @@ export class PocketService {
       );
     }
 
-    this.pockets[ POCKET_GLOBAL ] = new BehaviorSubject<PocketData>( { new: null } );
+    this.pockets[ POCKET_GLOBAL ] = new BehaviorSubjectWrapper<PocketData>( { new: null } );
   }
 
   register( k: string, inaction = false ) {
     if ( inaction ) {
       if ( this.actions[ k ] != null ) { return; }
-      this.actions[ k ] = new BehaviorSubject<PocketActionData>( { action: [] } );
+      this.actions[ k ] = new BehaviorSubjectWrapper<PocketActionData>( { action: [] } );
     } else {
       if ( this.pockets[ k ] != null ) { return; }
-      this.pockets[ k ] = new BehaviorSubject<PocketData>( { new: {} } );
+      this.pockets[ k ] = new BehaviorSubjectWrapper<PocketData>( { new: {} } );
     }
   }
 
   // create a pocket subject and return an observable
-  observe( k: string, p: PocketPipeParams = null ) {
+  observe( k: string, p: PocketPipeParams = null, opts: PocketDebug = null ): Observable<PocketData> {
     const { caller, receiver, filter, enforceSelf, } =
       { caller: null, receiver: null, filter: null, enforceSelf: false, ...p };
-    if ( this.pockets[ k ] != null ) {
-      return this.pockets[ k ].asObservable().pipe(
-        eventFilter(),
-        pocketReceiverFilter( receiver, { enforceSelf } )
-      ) as Observable<PocketData>;
-    }
-    this.register( k );
-    return this.pockets[ k ].asObservable().pipe(
+    if ( this.pockets[ k ] == null ) { this.register( k ); }
+    return this.pockets[ k ].asObservable( opts ? opts.subscriberID : null ).pipe(
       eventFilter(),
       pocketReceiverFilter( receiver, { enforceSelf } )
     ) as Observable<PocketData>;
   }
 
   // create an action subject and return an observable
-  action( k: string, p: PocketPipeParams = null ) {
+  action( k: string, p: PocketPipeParams = null, opts: PocketDebug = null ): Observable<PocketActionData> {
     const { caller, receiver, filter, enforceSelf, } =
       { caller: null, receiver: null, filter: null, enforceSelf: false, ...p };
-    if ( this.actions[ k ] != null ) {
-      return this.actions[ k ].asObservable().pipe(
-        eventFilter(),
-        pocketReceiverFilter( receiver, { enforceSelf } )
-      ) as Observable<PocketActionData>;
-    }
-    this.register( k, true );
-    return this.actions[ k ].asObservable().pipe(
+    if ( this.actions[ k ] == null ) { this.register( k, true ); }
+    return this.actions[ k ].asObservable( opts ? opts.subscriberID : null ).pipe(
       eventFilter(),
       pocketReceiverFilter( receiver, { enforceSelf } )
     ) as Observable<PocketActionData>;
   }
 
   // create a pocket subject and return an observable with a takeUntil operator piped in
-  observeUntil( k: string, o: Observable<any> | Subject<any>, p: PocketPipeParams = null ) {
+  observeUntil( k: string, o: Observable<any> | Subject<any>, p: PocketPipeParams = null, opts: PocketDebug = null ) {
     const { caller, receiver, filter, enforceSelf, } =
       { caller: null, receiver: null, filter: null, enforceSelf: false, ...p };
-    if ( this.pockets[ k ] != null ) {
-      return this.pockets[ k ].asObservable().pipe(
-        takeUntil( o ),
-        eventFilter(),
-        pocketReceiverFilter( receiver, { enforceSelf } ),
-      ) as Observable<PocketData>;
-    }
-    this.register( k );
-    return this.pockets[ k ].asObservable().pipe(
+    if ( this.pockets[ k ] == null ) { this.register( k ); }
+    return this.pockets[ k ].asObservable( opts ? opts.subscriberID : null ).pipe(
       takeUntil( o ),
       eventFilter(),
       pocketReceiverFilter( receiver, { enforceSelf } ),
@@ -220,18 +230,11 @@ export class PocketService {
   }
 
   // create an action subject and return an observable with a takeUntil operator piped in
-  actionUntil( k: string, o: Observable<any> | Subject<any>, p: PocketPipeParams = null ): Observable<PocketActionData> {
+  actionUntil( k: string, o: Observable<any> | Subject<any>, p: PocketPipeParams = null, opts: PocketDebug = null ): Observable<PocketActionData> {
     const { caller, receiver, filter, enforceSelf, } =
       { caller: null, receiver: null, filter: null, enforceSelf: false, ...p };
-    if ( this.actions[ k ] != null ) {
-      return this.actions[ k ].asObservable().pipe(
-        takeUntil( o ),
-        eventFilter(),
-        pocketReceiverFilter( receiver, { enforceSelf } ),
-      ) as Observable<PocketActionData>;
-    }
-    this.register( k, true );
-    return this.actions[ k ].asObservable().pipe(
+    if ( this.actions[ k ] == null ) { this.register( k, true ); }
+    return this.actions[ k ].asObservable( opts ? opts.subscriberID : null ).pipe(
       takeUntil( o ),
       eventFilter(),
       pocketReceiverFilter( receiver, { enforceSelf } ),
@@ -438,5 +441,8 @@ export class PocketService {
     }
 
     return out;
+  }
+
+  private tagObserver( s: BehaviorSubject<any>, o: Observable<PocketData | PocketActionData>, tag: string ) {
   }
 }

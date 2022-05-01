@@ -31,7 +31,7 @@ export class PocketDataAComponent implements OnInit, OnDestroy {
 
     // observe the pocket changes from the B component
     this.pocket.observeUntil( POCKET_GLOBAL, this.unsub,
-      { receiver: POCKET_GLOBAL_DATA_CONTAINER_B_RECEIVER } ).subscribe( ( v ) => {
+      { receiver: POCKET_GLOBAL_DATA_CONTAINER_B_RECEIVER }, { subscriberID: 'A-DATA-SUBSCRIBER' } ).subscribe( ( v ) => {
         if ( this.pocket.isKeyChanged( v, POCKET_GLOBAL_DATA_CONTAINER_KEY, 'va' ) ) {
           const data = this.pocket.val( v, POCKET_GLOBAL_DATA_CONTAINER_KEY ) || {};
           this.tForm.controls.va.patchValue( data[ 'va' ], { emitEvent: false } );
